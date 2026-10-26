@@ -1,0 +1,17 @@
+#moitruong
+rootfs/
+output/
+scripts/
+de_bai/
+
+#file
+*.o
+*.ko
+*.mod
+*.mod.c
+.*.cmd
+Module.symvers
+Modules.order
+
+#filenop
+*.tar.gz
