@@ -11,7 +11,7 @@ de_bai/
 *.mod.c
 .*.cmd
 Module.symvers
-Modules.order
+modules.order
 
 #filenop
 *.tar.gz
