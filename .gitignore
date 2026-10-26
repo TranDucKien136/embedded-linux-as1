@@ -3,6 +3,7 @@ rootfs/
 output/
 scripts/
 de_bai/
+.vscode/
 
 #file
 *.o
