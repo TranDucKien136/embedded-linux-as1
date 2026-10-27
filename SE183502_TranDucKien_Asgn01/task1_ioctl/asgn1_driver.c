@@ -120,12 +120,62 @@ static ssize_t asgn1_write(struct file *file, const char __user *ubuf, size_t co
     return count; // return count even if truncated
 }
 
+static long asgn1_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
+    struct as01_stats stats;
+    int mode;
+    long ret = 0;
+    if (_IOC_TYPE(cmd) != AS01_MAGIC_NUMBER || _IOC_NR(cmd) > AS01_IOCTL_MAXNR) {
+        return -ENOTTY; // Command not supported
+    }
+    mutex_lock(&asgn1_drv.lock);
+    switch (cmd) {
+        case AS01_RESET_BUFFER:
+            asgn1_drv.buffer_len = 0;
+            asgn1_drv.write_count = 0;
+            asgn1_drv.read_count = 0;
+            pr_info(AS01_DEVICE_NAME": ioctl RESET_BUFFER\n");
+            break;
+        case AS01_GET_STATS:
+            stats.open_count = asgn1_drv.open_count;
+            stats.write_count = asgn1_drv.write_count;
+            stats.read_count = asgn1_drv.read_count;
+            stats.buffer_len = asgn1_drv.buffer_len;
+            stats.last_write_size = asgn1_drv.last_write_size;
+            if (copy_to_user((void __user *)arg, &stats, sizeof(stats))) {
+                ret = -EFAULT;
+            }
+            pr_info(AS01_DEVICE_NAME": ioctl GET_STATS\n");
+            break;
+        case AS01_SET_MODE:
+            if (get_user(mode, (int __user *)arg)) {
+                ret = -EFAULT;
+            } else if (mode != AS01_MODE_KERNEL && mode != AS01_MODE_ECHO) {
+                ret = -EINVAL; // Invalid argument
+            } else {
+                asgn1_drv.mode = mode;
+                pr_info(AS01_DEVICE_NAME": ioctl SET_MODE: mode set to %d\n", mode);
+            }
+            break;
+        case AS01_GET_VERSION:
+            if (copy_to_user((void __user *)arg, AS01_VERSION, strlen(AS01_VERSION) + 1)) {
+                ret = -EFAULT;
+            }
+            pr_info(AS01_DEVICE_NAME": ioctl GET_VERSION\n");
+            break;
+        default:          
+            ret = -ENOTTY; // Command not supported
+    }
+    mutex_unlock(&asgn1_drv.lock);
+    return ret;
+}
+
 static const struct file_operations asgn1_fops = {
     .owner = THIS_MODULE,
     .open = asgn1_open,
     .release = asgn1_release,
     .read = asgn1_read,
     .write = asgn1_write,
+    .unlocked_ioctl = asgn1_ioctl,
 };
 
 static int __init asgn1_init(void) {
