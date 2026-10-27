@@ -12,9 +12,6 @@
 #define AS01_PREFIX "[KERNEL] "
 #define AS01_VERSION "asgn1_driver v1.0-SE183502"
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Tran Duc Kien - SE183502");
-MODULE_DESCRIPTION("Char device driver for assignment 1");
 
 static struct asgn1_driver {
     char buffer[AS01_BUFFER_SIZE];
@@ -120,5 +117,37 @@ static ssize_t asgn1_write(struct file *file, const char __user *ubuf, size_t co
         pr_warn(AS01_DEVICE_NAME ": write truncated, only %zu bytes written (count = %zu)\n", nbytes, count);
     }
     mutex_unlock(&asgn1_drv.lock);
-    return count;
+    return count; // return count even if truncated
 }
+
+static const struct file_operations asgn1_fops = {
+    .owner = THIS_MODULE,
+    .open = asgn1_open,
+    .release = asgn1_release,
+    .read = asgn1_read,
+    .write = asgn1_write,
+};
+
+static int __init asgn1_init(void) {
+    int ret;
+    ret = register_chrdev(AS01_MAJOR_NUMBER, AS01_DEVICE_NAME, &asgn1_fops);
+    if (ret < 0) {
+        pr_err(AS01_DEVICE_NAME ": failed to register major number %d (error %d)\n", AS01_MAJOR_NUMBER, ret);
+        return ret;
+    }
+    pr_info(AS01_DEVICE_NAME ": registered char device with major number %d\n", AS01_MAJOR_NUMBER);
+    pr_info(AS01_DEVICE_NAME ": version: %s\n", AS01_VERSION);
+    return 0;
+}
+
+static void __exit asgn1_exit(void) {
+    unregister_chrdev(AS01_MAJOR_NUMBER, AS01_DEVICE_NAME);
+    pr_info(AS01_DEVICE_NAME ": Unloaded\n");
+}
+
+module_init(asgn1_init);
+module_exit(asgn1_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Tran Duc Kien - SE183502");
+MODULE_DESCRIPTION("Char device driver for assignment 1");
