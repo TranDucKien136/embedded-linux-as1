@@ -84,3 +84,41 @@ static ssize_t asgn1_read(struct file *file, char __user *ubuf, size_t count, lo
     mutex_unlock(&asgn1_drv.lock);
     return nbytes;
 }
+
+/**
+ * asgn1_write - dinh nghia ham write cho device
+ * @file: con tro den struct file cua device
+ * @ubuf: con tro den buffer nguoi dung de ghi du lieu vao device
+ * @count: so byte nguoi dung muon ghi vao device
+ * @ppos: khong su dung trong ham write
+ * kernel se goi ham nay khi nguoi dung ghi du lieu vao device
+ * tra ve count ke ca khi ghi bi cat 
+ */
+static ssize_t asgn1_write(struct file *file, const char __user *ubuf, size_t count, loff_t *ppos) {
+    size_t nbytes;
+    size_t plen;
+    mutex_lock(&asgn1_drv.lock);
+    if (asgn1_drv.mode == AS01_MODE_KERNEL) {
+        plen = strlen(AS01_PREFIX);
+    } else {
+        plen = 0;
+    }
+    nbytes = min_t(size_t, count, (AS01_BUFFER_SIZE - plen));
+    if (plen > 0) {
+        memcpy(asgn1_drv.buffer, AS01_PREFIX, plen);
+    }
+    if (copy_from_user(asgn1_drv.buffer + plen, ubuf, nbytes)) {
+        mutex_unlock(&asgn1_drv.lock);
+        return -EFAULT;
+    }
+    asgn1_drv.buffer_len = plen + nbytes;
+    asgn1_drv.write_count++;
+    asgn1_drv.last_write_size = nbytes;
+    pr_info(AS01_DEVICE_NAME ": wrote %zu bytes to device (write_count = %d, mode = %d)\n",
+        nbytes, asgn1_drv.write_count, asgn1_drv.mode);
+    if (nbytes < count) {
+        pr_warn(AS01_DEVICE_NAME ": write truncated, only %zu bytes written (count = %zu)\n", nbytes, count);
+    }
+    mutex_unlock(&asgn1_drv.lock);
+    return count;
+}
