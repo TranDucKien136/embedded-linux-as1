@@ -13,6 +13,7 @@ de_bai/
 .*.cmd
 Module.symvers
 modules.order
+asgn1_app
 
 #filenop
 *.tar.gz
